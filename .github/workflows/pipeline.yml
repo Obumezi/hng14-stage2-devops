@@ -36,12 +36,13 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install lint tools
+      - name: Install Linting Tools
         run: |
-          pip install flake8
-          sudo apt-get update
-          sudo apt-get install -y hadolint curl
-          npm install -g eslint
+             pip install flake8
+             npm install -g eslint
+             sudo apt-get update && sudo apt-get install -y curl
+             sudo curl -sSL https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 -o /usr/local/bin/hadolint
+             sudo chmod +x /usr/local/bin/hadolint
 
       - name: Run flake8
         run: flake8 api/

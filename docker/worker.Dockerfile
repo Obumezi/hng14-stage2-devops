@@ -19,9 +19,9 @@ RUN apt-get update && apt-get install -y procps && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY --from=builder /root/.local /home/appuser/.local
+COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
 
-COPY worker/ .
+COPY --chown=appuser:appuser worker/ .
 
 ENV PATH=/home/appuser/.local/bin:$PATH
 

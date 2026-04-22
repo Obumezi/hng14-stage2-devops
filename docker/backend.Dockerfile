@@ -22,10 +22,10 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Copy only installed packages from builder
-COPY --from=builder /root/.local /home/appuser/.local
+COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
 
 # Copy app code
-COPY backend/ .
+COPY --chown=appuser:appuser backend/ .
 
 # Set PATH for local installs
 ENV PATH=/home/appuser/.local/bin:$PATH

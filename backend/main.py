@@ -1,20 +1,15 @@
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 import redis
 import uuid
 import os
-import threading
-import time
 
 app = FastAPI()
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 
-r = redis.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
-
-
-def process_job(job_id):
-    time.sleep(2)
-    r.hset(f"job:{job_id}", "status", "completed")
+r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
 
 @app.get("/health")
@@ -28,8 +23,6 @@ def create_job():
     r.lpush("jobs", job_id)
     r.hset(f"job:{job_id}", "status", "queued")
 
-    threading.Thread(target=process_job, args=(job_id,)).start()
-
     return {"job_id": job_id}
 
 
@@ -38,6 +31,6 @@ def get_job(job_id: str):
     status = r.hget(f"job:{job_id}", "status")
 
     if not status:
-        return {"error": "not found"}
+        return JSONResponse({"error": "not found"}, status_code=404)
 
     return {"job_id": job_id, "status": status}

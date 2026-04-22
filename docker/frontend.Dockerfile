@@ -16,10 +16,10 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 WORKDIR /app
 
 # Copy node_modules from builder
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:appuser /app/node_modules ./node_modules
 
 # Copy app code
-COPY frontend/ .
+COPY --chown=appuser:appuser frontend/ .
 
 USER appuser
 

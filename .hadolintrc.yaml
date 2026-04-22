@@ -1,2 +1,4 @@
-rules:
-  DL3008: off
+ignored:
+  - DL3008
+
+failure-threshold: error

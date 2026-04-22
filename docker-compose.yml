@@ -94,6 +94,7 @@ services:
     restart : unless-stopped
     networks:
       - app_network
+
     environment:
       - API_URL=${API_URL}
       - FRONTEND_PORT=${FRONTEND_PORT}
@@ -112,3 +113,6 @@ services:
         limits:
           cpus: "${FRONTEND_CPU_LIMIT}"
           memory: "${FRONTEND_MEMORY_LIMIT}"
+
+  environment:
+      - REDIS_HOST=redis

@@ -60,13 +60,13 @@ jobs:
 # -------------------
       - name: Install test dependencies
         run: |
-          pip install -r backend/requirements.txt
+          pip install -r api/requirements.txt
           pip install pytest pytest-cov
 
       - name: Run pytest with coverage
         run: |
-          pytest backend/ \
-            --cov=backend \
+          pytest api/ \
+            --cov=api \
             --cov-report=xml
 
       - name: Upload coverage

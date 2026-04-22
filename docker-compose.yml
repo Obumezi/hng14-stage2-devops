@@ -36,9 +36,9 @@ services:
     networks:
       - app_network
     environment:
-      - REDIS_HOST: ${REDIS_HOST}
-      - REDIS_PORT: ${REDIS_PORT}
-      - BACKEND_PORT: ${BACKEND_PORT}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - BACKEND_PORT=${BACKEND_PORT}
     depends_on:
       redis:
         condition: service_healthy

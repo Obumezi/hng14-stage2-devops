@@ -49,7 +49,7 @@ jobs:
         run: eslint frontend/
 
       - name: Lint Dockerfiles (hadolint)
-        run: hadolint api/Dockerfile frontend/Dockerfile worker/Dockerfile
+        run: hadolint -c .hadolintrc.yaml api/Dockerfile frontend/Dockerfile worker/Dockerfile
 
 # =========================
 # 🧪 TEST

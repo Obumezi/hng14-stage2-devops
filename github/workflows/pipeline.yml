@@ -1,0 +1,184 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    env:
+      REGISTRY: localhost:5000
+      IMAGE_TAG: ${{ github.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+# -------------------
+# 🔍 LINT
+# -------------------
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install lint tools
+        run: |
+          pip install flake8
+          sudo apt-get update
+          sudo apt-get install -y hadolint curl
+          npm install -g eslint
+
+      - name: Run flake8
+        run: flake8 api/ || exit 1
+
+      - name: Run eslint
+        run: eslint frontend/ || exit 1
+
+      - name: Run hadolint
+        run: hadolint docker/*.Dockerfile || exit 1
+
+# -------------------
+# 🧪 TEST
+# -------------------
+      - name: Install test deps
+        run: |
+          pip install -r api/requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run pytest with coverage
+        run: |
+          pytest api \
+            --cov=api \
+            --cov-report=xml
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+# -------------------
+# 🏗 BUILD
+# -------------------
+      - name: Build Docker images
+        run: |
+          docker build -t $REGISTRY/backend:$IMAGE_TAG -t $REGISTRY/backend:latest -f docker/backend.Dockerfile .
+          docker build -t $REGISTRY/frontend:$IMAGE_TAG -t $REGISTRY/frontend:latest -f docker/frontend.Dockerfile .
+          docker build -t $REGISTRY/worker:$IMAGE_TAG -t $REGISTRY/worker:latest -f docker/worker.Dockerfile .
+
+      - name: Push images to local registry
+        run: |
+          docker push $REGISTRY/backend:$IMAGE_TAG
+          docker push $REGISTRY/backend:latest
+          docker push $REGISTRY/frontend:$IMAGE_TAG
+          docker push $REGISTRY/frontend:latest
+          docker push $REGISTRY/worker:$IMAGE_TAG
+          docker push $REGISTRY/worker:latest
+
+# -------------------
+# 🔐 SECURITY SCAN
+# -------------------
+      - name: Install Trivy
+        run: |
+          sudo apt-get install -y wget
+          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.0_Linux-64bit.deb
+          sudo dpkg -i trivy_0.50.0_Linux-64bit.deb
+
+      - name: Scan backend image
+        run: |
+          trivy image --exit-code 1 --severity CRITICAL \
+            --format sarif --output backend.sarif \
+            $REGISTRY/backend:$IMAGE_TAG
+
+      - name: Upload SARIF
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: backend.sarif
+
+# -------------------
+# 🔗 INTEGRATION TEST
+# -------------------
+      - name: Create .env for compose
+        run: |
+          echo "REDIS_HOST=redis" >> .env
+          echo "REDIS_PORT=6379" >> .env
+          echo "BACKEND_PORT=8000" >> .env
+          echo "FRONTEND_PORT=3000" >> .env
+          echo "API_URL=http://backend:8000" >> .env
+
+      - name: Start full stack
+        run: docker-compose up -d --build
+
+      - name: Wait for services
+        run: sleep 20
+
+      - name: Submit job via frontend
+        run: |
+          RESPONSE=$(curl -s -X POST http://localhost:3000/job)
+          echo $RESPONSE
+          JOB_ID=$(echo $RESPONSE | jq -r '.job_id')
+          echo "JOB_ID=$JOB_ID" >> $GITHUB_ENV
+
+      - name: Poll job status
+        run: |
+          for i in {1..12}; do
+            STATUS=$(curl -s http://localhost:3000/job/$JOB_ID | jq -r '.status')
+            echo "Status: $STATUS"
+
+            if [ "$STATUS" = "completed" ]; then
+              exit 0
+            fi
+
+            sleep 5
+          done
+
+          echo "Job did not complete"
+          exit 1
+
+      - name: Tear down stack
+        if: always()
+        run: docker-compose down
+
+# -------------------
+# 🚀 DEPLOY (ROLLING)
+# -------------------
+      - name: Deploy
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker pull $REGISTRY/backend:$IMAGE_TAG
+
+          docker run -d --name new_backend -p 8001:8000 $REGISTRY/backend:$IMAGE_TAG
+
+          for i in {1..12}; do
+            if curl -f http://localhost:8001/health; then
+              echo "New container healthy"
+
+              docker stop backend || true
+              docker rm backend || true
+
+              docker rename new_backend backend
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "Health check failed"
+          docker stop new_backend
+          docker rm new_backend
+          exit 1

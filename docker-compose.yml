@@ -1,0 +1,109 @@
+version: "3.9"
+
+networks:
+  app_network:
+    driver: bridge
+
+services:
+
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - app_network
+    environment:
+      - REDIS_PORT=${REDIS_PORT}
+    command: ["redis-server", "--port", "${REDIS_PORT}"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "${REDIS_PORT}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "${REDIS_CPU_LIMIT}"
+          memory: "${REDIS_MEMORY_LIMIT}"
+
+# -------------------
+# 🐍 BACKEND
+# -------------------
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    networks:
+      - app_network
+    environment:
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - BACKEND_PORT=${BACKEND_PORT}
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${BACKEND_PORT}/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "${BACKEND_CPU_LIMIT}"
+          memory: "${BACKEND_MEMORY_LIMIT}"
+
+# -------------------
+# ⚙️ WORKER
+# -------------------
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    networks:
+      - app_network
+    environment:
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "worker.py"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "${WORKER_CPU_LIMIT}"
+          memory: "${WORKER_MEMORY_LIMIT}"
+
+# -------------------
+# 🌐 FRONTEND
+# -------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    networks:
+      - app_network
+    environment:
+      - API_URL=${API_URL}
+      - FRONTEND_PORT=${FRONTEND_PORT}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:${FRONTEND_PORT}/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "${FRONTEND_CPU_LIMIT}"
+          memory: "${FRONTEND_MEMORY_LIMIT}"

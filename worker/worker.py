@@ -11,9 +11,11 @@ r = redis.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
 
 running = True
 
+
 def shutdown_handler(signum, frame):
     global running
     running = False
+
 
 signal.signal(signal.SIGTERM, shutdown_handler)
 signal.signal(signal.SIGINT, shutdown_handler)

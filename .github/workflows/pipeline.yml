@@ -41,6 +41,11 @@ jobs:
           sudo apt-get install -y hadolint
           npm install -g eslint
 
+      - name: Install hadolint
+        run: |
+              wget -O /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+              chmod +x /usr/local/bin/hadolint
+     
       - name: Lint Python (flake8)
         run: flake8 api/
 

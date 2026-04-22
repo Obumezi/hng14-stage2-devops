@@ -9,6 +9,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart : unless-stopped
     networks:
       - app_network
     environment:
@@ -31,7 +32,9 @@ services:
   backend:
     build:
       context: .
-      dockerfile: docker/backend.Dockerfile
+      dockerfile: api/Dockerfile
+
+    restart : unless-stopped
     networks:
       - app_network
     environment:
@@ -61,6 +64,8 @@ services:
     build:
       context: .
       dockerfile: docker/worker.Dockerfile
+
+    restart : unless-stopped
     networks:
       - app_network
     environment:
@@ -87,6 +92,8 @@ services:
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
+
+    restart : unless-stopped
     networks:
       - app_network
     environment:

@@ -6,7 +6,7 @@ WORKDIR /app
 # Install build dependencies
 RUN apt-get update && apt-get install -y gcc
 
-COPY backend/requirements.txt .
+COPY api/requirements.txt .
 
 RUN pip install --no-cache-dir --user -r requirements.txt
 
@@ -25,7 +25,7 @@ WORKDIR /app
 COPY --from=builder /root/.local /home/appuser/.local
 
 # Copy app code
-COPY backend/ .
+COPY api/ .
 
 # Set PATH for local installs
 ENV PATH=/home/appuser/.local/bin:$PATH

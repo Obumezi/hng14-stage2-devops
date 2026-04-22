@@ -1,0 +1,3 @@
+rules:
+  DL3008:
+    severity: ignore

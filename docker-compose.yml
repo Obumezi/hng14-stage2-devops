@@ -30,7 +30,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: api/Dockerfile
+      dockerfile: docker/backend.Dockerfile
 
     restart : unless-stopped
     networks:

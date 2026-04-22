@@ -47,7 +47,7 @@ jobs:
             sudo mv hadolint /usr/local/bin/
 
       - name: Run flake8
-        run: flake8 backend/ worker/
+        run: flake8 api/ worker/
 
       - name: Run eslint
         run: eslint frontend/

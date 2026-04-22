@@ -3,6 +3,7 @@ import time
 import os
 import signal
 
+
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 QUEUE_NAME = "jobs"
 

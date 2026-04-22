@@ -3,7 +3,7 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-#RUN apt-get update && apt-get install -y --no-install-recommends build-essential=12.10 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
 COPY worker/requirements.txt .
 
@@ -15,7 +15,7 @@ FROM python:3.11-slim
 RUN useradd -m appuser
 
 # Install procps for health checks (contains pgrep)
-RUN apt-get update && apt-get install -y --no-install-recommends procps=2:4.0.2-3 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends procps && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

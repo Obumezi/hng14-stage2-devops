@@ -3,7 +3,7 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y gcc
+RUN apt-get update && apt-get install -y --no-install-recommends gcc=4:12.2.0-3
 
 COPY worker/requirements.txt .
 
@@ -15,7 +15,7 @@ FROM python:3.11-slim
 RUN useradd -m appuser
 
 # Install procps for health checks (contains pgrep)
-RUN apt-get update && apt-get install -y procps && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends procps=2:4.0.2-3 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

@@ -47,26 +47,26 @@ jobs:
             sudo mv hadolint /usr/local/bin/
 
       - name: Run flake8
-        run: flake8 api/
+        run: flake8 backend/ worker/
 
       - name: Run eslint
         run: eslint frontend/
 
       - name: Run hadolint
-        run: hadolint api/Dockerfile frontend/Dockerfile worker/Dockerfile
+        run: hadolint docker/backend.Dockerfile docker/frontend.Dockerfile docker/worker.Dockerfile
 
 # -------------------
 # 🧪 TEST
 # -------------------
       - name: Install test dependencies
         run: |
-          pip install -r api/requirements.txt
+          pip install -r backend/requirements.txt
           pip install pytest pytest-cov
 
       - name: Run pytest with coverage
         run: |
-          pytest api \
-            --cov=api \
+          pytest backend/ \
+            --cov=backend \
             --cov-report=xml
 
       - name: Upload coverage
@@ -91,9 +91,9 @@ jobs:
 
       - name: Build Docker images
         run: |
-          docker build -t $REGISTRY/backend:$IMAGE_TAG -t $REGISTRY/backend:latest -f api/Dockerfile .
-          docker build -t $REGISTRY/frontend:$IMAGE_TAG -t $REGISTRY/frontend:latest -f frontend/Dockerfile .
-          docker build -t $REGISTRY/worker:$IMAGE_TAG -t $REGISTRY/worker:latest -f worker/Dockerfile .
+          docker build -t $REGISTRY/backend:$IMAGE_TAG -t $REGISTRY/backend:latest -f docker/backend.Dockerfile .
+          docker build -t $REGISTRY/frontend:$IMAGE_TAG -t $REGISTRY/frontend:latest -f docker/frontend.Dockerfile .
+          docker build -t $REGISTRY/worker:$IMAGE_TAG -t $REGISTRY/worker:latest -f docker/worker.Dockerfile .
 
       - name: Push images to local registry
         run: |
@@ -148,6 +148,14 @@ jobs:
           echo "BACKEND_PORT=8000" >> .env
           echo "FRONTEND_PORT=3000" >> .env
           echo "API_URL=http://backend:8000" >> .env
+          echo "REDIS_CPU_LIMIT=0.25" >> .env
+          echo "REDIS_MEMORY_LIMIT=128M" >> .env
+          echo "BACKEND_CPU_LIMIT=0.5" >> .env
+          echo "BACKEND_MEMORY_LIMIT=256M" >> .env
+          echo "WORKER_CPU_LIMIT=0.5" >> .env
+          echo "WORKER_MEMORY_LIMIT=256M" >> .env
+          echo "FRONTEND_CPU_LIMIT=0.25" >> .env
+          echo "FRONTEND_MEMORY_LIMIT=128M" >> .env
 
       - name: Start full stack
         run: docker compose up -d --build
@@ -157,7 +165,7 @@ jobs:
 
       - name: Submit job via frontend
         run: |
-          RESPONSE=$(curl -s -X POST http://localhost:3000/job)
+          RESPONSE=$(curl -s -X POST http://localhost:3000/jobs)
           echo $RESPONSE
           JOB_ID=$(echo $RESPONSE | jq -r '.job_id')
           echo "JOB_ID=$JOB_ID" >> $GITHUB_ENV
@@ -165,7 +173,7 @@ jobs:
       - name: Poll job status
         run: |
           for i in {1..12}; do
-            STATUS=$(curl -s http://localhost:3000/job/$JOB_ID | jq -r '.status')
+            STATUS=$(curl -s http://localhost:3000/jobs/$JOB_ID | jq -r '.status')
             echo "Status: $STATUS"
 
             if [ "$STATUS" = "completed" ]; then

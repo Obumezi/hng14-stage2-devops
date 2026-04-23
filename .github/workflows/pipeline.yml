@@ -142,7 +142,7 @@ jobs:
       - name: Submit job
         run: |
           # Capture the response body in a file, and the HTTP status code in a variable
-          HTTP_STATUS=$(curl -s -o response.txt -w "%{http_code}" -X POST http://localhost:3000/submit)
+          HTTP_STATUS=$(curl -s -o response.txt -w "%{http_code}" -X POST http://localhost:8000/submit)
           RESPONSE=$(cat response.txt)
           
           echo "HTTP Status: $HTTP_STATUS"

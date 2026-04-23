@@ -141,44 +141,34 @@ jobs:
 
       - name: Submit job
         run: |
-          # 1. Get the JOB_ID from the BACKEND (Port 8000)
           RESPONSE=$(curl -s -X POST http://localhost:8000/submit)
-          echo "Debug Response: $RESPONSE"
-          
-          # 2. Extract and validate
-          ID=$(echo "$RESPONSE" | jq -r '.job_id // empty')
-          
-          if [ -z "$ID" ] || [ "$ID" == "null" ]; then
-            echo "Error: Backend failed to provide a Job ID. Response was: $RESPONSE"
-            docker compose logs backend
-            exit 1
-          fi
-          
-          # 3. Save it for the next step
-          echo "JOB_ID=$ID" >> $GITHUB_ENV
+          JOB_ID=$(echo $RESPONSE | jq -r '.job_id')
+          echo "JOB_ID=$JOB_ID" >> $GITHUB_ENV
 
       - name: Poll job status
         run: |
-          # Ensure we aren't polling for "null"
-          if [ "$JOB_ID" == "null" ] || [ -z "$JOB_ID" ]; then
-            echo "Error: JOB_ID is invalid."
-            exit 1
-          fi
-
           for i in {1..12}; do
-            # Hit the backend port 8000
-            RAW_STATUS=$(curl -s http://localhost:8000/status/$JOB_ID)
-            STATUS=$(echo "$RAW_STATUS" | jq -r '.status // "unknown"')
-            
-            echo "Attempt $i: Job is $STATUS"
-            
+            STATUS=$(curl -s http://localhost:/status/$JOB_ID | jq -r '.status')
+            echo "Status: $STATUS"
+
             if [ "$STATUS" = "completed" ]; then
-              echo "Job Success!"
               exit 0
             fi
             sleep 5
           done
-          echo "Job timed out."
+
+
+      - name: Poll job status
+        run: |
+          for i in {1..12}; do
+            STATUS=$(curl -s http://localhost:8000/status/$JOB_ID | jq -r '.status')
+            echo "Status: $STATUS"
+
+            if [ "$STATUS" = "completed" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
           exit 1
 
       - name: Tear down

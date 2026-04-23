@@ -7,10 +7,7 @@ import signal
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 QUEUE_NAME = "jobs"
 
-r = redis.Redis(
-    host=os.getenv("REDIS_HOST", "localhost"),
-    port=int(os.getenv("REDIS_PORT", 6379))
-)
+r = redis.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
 
 running = True
 

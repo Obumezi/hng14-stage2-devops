@@ -24,18 +24,13 @@ def health():
 
 @app.post("/jobs")
 def create_job():
-    try:
-        job_id = str(uuid.uuid4())
+    job_id = str(uuid.uuid4())
+    r.lpush("jobs", job_id)
+    r.hset(f"job:{job_id}", "status", "queued")
 
-        r.lpush("jobs", job_id)
-        r.hset(f"job:{job_id}", "status", "queued")
+    threading.Thread(target=process_job, args=(job_id,)).start()
 
-        threading.Thread(target=process_job, args=(job_id,), daemon=True).start()
-
-        return {"job_id": job_id}
-
-    except Exception as e:
-        return {"error": str(e)}
+    return {"job_id": job_id}
 
 
 @app.get("/jobs/{job_id}")

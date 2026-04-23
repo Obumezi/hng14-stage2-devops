@@ -122,40 +122,74 @@ jobs:
 # =========================
 # 🔗 INTEGRATION TEST
 # =========================
+      # ... (Keep everything up to the Integration Test section)
+
+# =========================
+# 🔗 INTEGRATION TEST
+# =========================
       - name: Install jq
         run: sudo apt-get install -y jq
 
       - name: Create env file
         run: |
-          echo "REDIS_HOST=redis" >> .env
+          echo "REDIS_HOST=redis" > .env
           echo "REDIS_PORT=6379" >> .env
           echo "BACKEND_PORT=8000" >> .env
           echo "FRONTEND_PORT=3000" >> .env
           echo "API_URL=http://backend:8000" >> .env
+          echo "FRONTEND_CPU_LIMIT=0.5" >> .env
+          echo "FRONTEND_MEMORY_LIMIT=512M" >> .env
 
       - name: Start stack
         run: docker compose up -d --build
 
-      - name: Wait for services
-        run: sleep 20
+      - name: Wait for Frontend to be Healthy
+        run: |
+          echo "Polling localhost:3000/health..."
+          for i in {1..20}; do
+            if curl -s -f http://localhost:3000/health > /dev/null; then
+              echo "Frontend is ready!"
+              exit 0
+            fi
+            echo "Waiting for service... ($i/20)"
+            sleep 5
+          done
+          echo "Service failed to start in time"
+          docker compose logs
+          exit 1
 
       - name: Submit job
         run: |
-          RESPONSE=$(curl -s -X POST http://localhost:3000/submit)
-          JOB_ID=$(echo $RESPONSE | jq -r '.job_id')
+          # Use -f to catch 404/500 errors and quotes to handle the response safely
+          RESPONSE=$(curl -s -f -X POST http://localhost:3000/submit)
+          if [ -z "$RESPONSE" ]; then
+            echo "Error: Received empty response"
+            exit 1
+          fi
+          
+          # Extract job_id and ensure it's not null
+          JOB_ID=$(echo "$RESPONSE" | jq -r '.job_id // empty')
+          if [ -z "$JOB_ID" ]; then
+            echo "Error: Could not parse job_id from $RESPONSE"
+            exit 1
+          fi
           echo "JOB_ID=$JOB_ID" >> $GITHUB_ENV
 
       - name: Poll job status
         run: |
           for i in {1..12}; do
-            STATUS=$(curl -s http://localhost:3000/status/$JOB_ID | jq -r '.status')
-            echo "Status: $STATUS"
+            # Use quotes around $JOB_ID to prevent shell errors
+            RESPONSE=$(curl -s "http://localhost:3000/status/$JOB_ID")
+            STATUS=$(echo "$RESPONSE" | jq -r '.status // "unknown"')
+            echo "Attempt $i: Status is $STATUS"
 
             if [ "$STATUS" = "completed" ]; then
+              echo "Job finished successfully!"
               exit 0
             fi
             sleep 5
           done
+          echo "Job timed out after 60 seconds"
           exit 1
 
       - name: Tear down

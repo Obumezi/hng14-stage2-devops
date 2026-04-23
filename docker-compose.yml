@@ -19,7 +19,7 @@ services:
       resources:
         limits:
           cpus: "0.25"
-          memory: "128m"
+          memory: "128M"
 
   backend:
     build:
@@ -113,7 +113,13 @@ services:
       resources:
         limits:
           cpus: "0.25"
-          memory: "128m"
+          memory: "128M"
+
+          name: Debug response
+          run: |
+             RESPONSE=$(curl -s -X POST http://localhost:3000/submit)
+             echo "RESPONSE:"
+             echo "$RESPONSE"
 
 networks:
   app_network:

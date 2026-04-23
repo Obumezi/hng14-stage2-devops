@@ -141,31 +141,22 @@ jobs:
 
       - name: Submit job
         run: |
-          # Capture the response body in a file, and the HTTP status code in a variable
-          HTTP_STATUS=$(curl -s -o response.txt -w "%{http_code}" -X POST http://localhost:8000/submit)
-          RESPONSE=$(cat response.txt)
-          
-          echo "HTTP Status: $HTTP_STATUS"
-          echo "Raw Response: $RESPONSE"
-          
-          # If the status code is 400 or higher, the app is throwing an error
-          if [ "$HTTP_STATUS" -ge 400 ]; then
-            echo "Error: Server rejected the request with HTTP $HTTP_STATUS."
-            echo "--- PRINTING CONTAINER LOGS ---"
-            docker compose logs frontend backend
-            exit 1
-          fi
-          
-          # If we get here, it was a 200/201 success. Now parse the JSON.
-          JOB_ID=$(echo "$RESPONSE" | jq -r '.job_id // empty')
-          
-          if [ -z "$JOB_ID" ]; then
-            echo "Error: Response was successful, but could not find 'job_id'."
-            exit 1
-          fi
-          
+          RESPONSE=$(curl -s -X POST http://localhost:8000/submit)
+          JOB_ID=$(echo $RESPONSE | jq -r '.job_id')
           echo "JOB_ID=$JOB_ID" >> $GITHUB_ENV
-          echo "Successfully captured Job ID: $JOB_ID"
+
+      - name: Poll job status
+        run: |
+          for i in {1..12}; do
+            STATUS=$(curl -s http://localhost:8000/status/$JOB_ID | jq -r '.status')
+            echo "Status: $STATUS"
+
+            if [ "$STATUS" = "completed" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+
 
       - name: Poll job status
         run: |

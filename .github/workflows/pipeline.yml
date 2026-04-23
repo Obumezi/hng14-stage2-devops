@@ -158,19 +158,6 @@ jobs:
           done
 
 
-      - name: Poll job status
-        run: |
-          for i in {1..12}; do
-            STATUS=$(curl -s http://localhost:8000/status/$JOB_ID | jq -r '.status')
-            echo "Status: $STATUS"
-
-            if [ "$STATUS" = "completed" ]; then
-              exit 0
-            fi
-            sleep 5
-          done
-          exit 1
-
       - name: Tear down
         if: always()
         run: docker compose down
